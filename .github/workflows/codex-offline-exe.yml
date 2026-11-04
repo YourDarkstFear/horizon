@@ -1,0 +1,37 @@
+name: Codex offline launcher package
+
+on:
+  push:
+    branches: [codex/offline-account-exe]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: launcher
+      - name: Build launcher
+        working-directory: launcher
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+          HORIZON_TELEMETRY_URL: off
+          HORIZON_UPDATE_REPO: YourDarkstFear/horizon
+        run: cargo build --release --locked
+      - name: Package executables
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item launcher/target/release/horizon-launcher.exe dist/horizon-launcher.exe
+          Copy-Item launcher/target/release/horizon-launcher.exe dist/horizon-launcher-setup.exe
+          Compress-Archive -Path dist/horizon-launcher.exe,dist/horizon-launcher-setup.exe -DestinationPath horizon-offline-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horizon-offline-windows-x64
+          path: horizon-offline-windows-x64.zip
+          retention-days: 3

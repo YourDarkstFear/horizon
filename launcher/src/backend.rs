@@ -10,6 +10,12 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 
 pub const REPO: &str = "horizon-rust/horizon";
+/// Where this build looks for game and launcher updates. Fork builds can point at their own
+/// release stream without changing the upstream source used for assets, mods and documentation.
+pub const UPDATE_REPO: &str = match option_env!("HORIZON_UPDATE_REPO") {
+    Some(repo) if !repo.is_empty() => repo,
+    _ => REPO,
+};
 pub const README_URL: &str = "https://github.com/horizon-rust/horizon/blob/main/launcher/README.md";
 /// The players' page on connecting an AI agent (the website's docs/agents.md).
 pub const AGENT_DOCS_URL: &str = "https://playhorizon.dev/docs/agents";
@@ -320,7 +326,7 @@ pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
 /// ETag, and read through Kira's mirror past GitHub's rate limit: [`crate::github`]).
 fn release_list() -> Result<serde_json::Value, String> {
     crate::github::json(&format!(
-        "https://api.github.com/repos/{REPO}/releases?per_page=100"
+        "https://api.github.com/repos/{UPDATE_REPO}/releases?per_page=100"
     ))
 }
 
@@ -414,7 +420,7 @@ fn launcher_releases_in_with(
     if found.iter().any(|r| r.asset.is_some()) {
         return found;
     }
-    let api = format!("https://api.github.com/repos/{REPO}");
+    let api = format!("https://api.github.com/repos/{UPDATE_REPO}");
     let mut tags = Vec::new();
     for prefix in [LAUNCHER_TAG_PREFIX, OLD_LAUNCHER_TAG_PREFIX] {
         // Every `launcher@` tag is newer than every `launcher-v` one: those only when there is none.
