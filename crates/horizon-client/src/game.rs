@@ -16116,6 +16116,7 @@ impl Game<'_> {
         if !title {
             self.end_geometry(camera, &mut entities);
         }
+        self.outline_fill(&outline, camera, &mut entities);
         let weather = if !title && self.can_have_weather() && self.settings.horizon.weather {
             horizon_client::spans::time("weather", || self.weather_geometry(camera, alpha))
         } else {
@@ -16203,6 +16204,7 @@ impl Game<'_> {
             outline,
             outline_after_terrain,
             outline_high_contrast: self.settings.file.bool("highContrastBlockOutline"),
+            pvp: self.settings.extras.pvp.frame(),
             debug_lines: &debug_lines,
             debug_lines_on_top: &debug_lines_on_top,
             debug_crosshair: &debug_crosshair,
@@ -20923,6 +20925,7 @@ fn loading_frame(hud: &HudBatch) -> Frame<'_> {
         outline: Vec::new(),
         outline_after_terrain: false,
         outline_high_contrast: false,
+        pvp: Default::default(),
         debug_lines: &[],
         debug_lines_on_top: &[],
         debug_crosshair: &[],
