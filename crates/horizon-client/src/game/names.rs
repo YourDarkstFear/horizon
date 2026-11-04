@@ -579,7 +579,7 @@ impl Game<'_> {
                         y0 + f32::from(my),
                         f32::from(w),
                         f32::from(h),
-                        a << 24 | argb & 0xFF_FFFF,
+                        horizon_client::hud_layout::abgr(a << 24 | argb & 0xFF_FFFF),
                     );
                 }
             }
@@ -596,7 +596,8 @@ impl Game<'_> {
                     y0 + 9.0,
                     width + 1.0,
                     1.0,
-                    alpha | style.line,
+                    // The batch takes RGBA: the line as ARGB, swapped.
+                    horizon_client::hud_layout::abgr(alpha | style.line),
                 );
             }
             for (i, quad) in batch.vertices.as_chunks::<6>().0.iter().enumerate() {

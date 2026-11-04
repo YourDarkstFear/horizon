@@ -54,9 +54,9 @@ y points down, as in vanilla's `ModelPart`s and Blockbench's "Modded Entity" mod
   `phase` periods in. `swing` turns the part `amplitude` degrees (at most 45) about the axis, `bob`
   moves it `amplitude` pixels (at most 4), `spin` turns it all the way round once per period.
 
-A **name tag style** (`"slot": "name_tag"`) has no model: its texture is a square mark of at most
-16×16 drawn before the player's name, and `"tag": {"line": "#rrggbb"}` the colour of a line under
-it. `parts` stays empty and there are no animations; no other slot has a `tag`.
+A **name tag style** (`"slot": "name_tag"`) has no model: its texture is a square badge of at most
+16×16 drawn after the player's name (before it sits Horizon's own mark, for Horizon players), and
+`"tag": {"line": "#rrggbb"}` the colour of a line under it. `parts` stays empty and there are no animations; no other slot has a `tag`.
 
 ```json
 { "format": 1, "id": "example_tag", "slot": "name_tag", "texture": { "png": "<base64 8×8 PNG>" },
@@ -82,8 +82,9 @@ does the asking.
 
 - **One request for the players in view**: `POST /v1/worn` with up to 64 UUIDs
   (`{"players": ["<uuid hex>", …]}`) answers `{"ttl": seconds, "players": {"<uuid hex>": [{"id",
-  "hash"}, …]}}`; a player who wears nothing is left out. Only the UUIDs of players the game draws
-  are sent, nothing else about them or the server.
+  "hash"}, …]}, "horizon": ["<uuid hex>", …]}`; a player who wears nothing is left out of
+  `players`, and `horizon` lists the batch's Horizon players (below). Only the UUIDs of players the
+  game draws or lists are sent, nothing else about them or the server.
 - **Cached for the service's TTL** (kept within 1 minute to 1 hour). Past it the last answer stays
   drawn while the player is asked for again. The 4096 players seen most recently are remembered.
 - **Item files** come from `GET /v1/items/<id>?hash=<hash>` once and are kept on disk under their
@@ -93,6 +94,28 @@ does the asking.
 - **Across restarts**: the last answers are kept beside the item files (`worn.json`: each player's item
   ids and hashes, written only when an answer changes them). They are read only when the service doesn't
   answer, so a game started while it is down still shows what players last wore, until it answers.
+
+## Horizon players' mark
+
+Like Lunar Client's: Horizon players see Horizon's mark (two white bars over a violet line,
+`horizon_cosmetics::mark`) before the names of other Horizon players, above their heads (both
+views, and your own with *Own name tag*) and in the player list, after the head. Nothing changes on
+the wire to Minecraft servers: which players use Horizon comes from the cosmetics service, in the
+same cached `/v1/worn` answers as what they wear (no request of its own, nothing per frame).
+
+- **Who is reported**: a player whose game said "I play Horizon" lately. While *Show me as a
+  Horizon player* is on, the game signs in (Mojang's `join`, as for *My cosmetics*) and sends
+  `POST /v1/presence {"listed": true}` at start, then every hour (`account::PRESENCE_EVERY`); the
+  service reports them for 3 hours after the last time (`COSMETICS_PRESENCE_WINDOW`). Off, the game
+  sends `{"listed": false}` and the service forgets them at once: it never reports them again until
+  they turn it back on. An offline account sends nothing and is never reported.
+- **Settings** (Extras › Cosmetics, both on by default): *Show the Horizon logo next to Horizon
+  players* (off: the game draws no mark, and asks for nothing more than cosmetics need) and *Show me
+  as a Horizon player*.
+- **The player list** keeps a 9-pixel column for the mark once anyone listed has it, so names stay
+  aligned.
+- **Cost**: in a name tag, the mark is five filled rectangles beside the text, looked up under the
+  same lock as the name tag style; in the player list, one look per listed player while it shows.
 
 ## In the game
 
@@ -111,9 +134,9 @@ does the asking.
   - *Other players' cosmetics: Shown → Name tags only → Hidden*. Hidden, the game asks for nothing
     about them; name tags only, their name tag styles show and nothing on their bodies.
   - *Others' auras and trails*, off by default (no item of that kind exists yet).
-- **Name tag styles** (`game/names.rs`): the mark, 8 text pixels square, before the name and a
+- **Name tag styles** (`game/names.rs`): the badge, 8 text pixels square, after the name and a
   one-pixel line in the style's colour under the name's background, in the name tag's own pass
-  (the mark is in the atlas like the other items' textures).
+  (the badge is in the atlas like the other items' textures). Horizon's mark goes before the name.
 - **Drawing** (`game/cosmetics.rs`): an item's texture takes one of the skin atlas's 64×64 slots
   and its boxes are posed on the wearer's bone each frame, through the same GPU skin path as the
   player model (the CPU path where that is off), lit and culled with the player. A helmet hides a
@@ -169,7 +192,8 @@ that account). With no window set, the page stays hidden.
 
 - **A row per slot** (head, back, shirt, shoulder pet, name tag) with what it wears,
   "Nothing equipped" or "None owned yet"; **your player** in the middle, on your own skin, wearing
-  it, with your name tag style over the head (`horizon_cosmetics::preview`); **what you own for the
+  it, with your name tag over the head as others see it (Horizon's mark unless the game's *Show me
+  as a Horizon player* is off, your style's badge after the name) (`horizon_cosmetics::preview`); **what you own for the
   chosen slot**, "Nothing" first. Equipping shows at once.
 - **The founder set**: a line to claim it while its window is open, and once the window is closed,
   that it was free until that day and isn't offered any more.
